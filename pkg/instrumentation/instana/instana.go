@@ -45,11 +45,11 @@ func NewAdapter(db *gorm.DB, driver, connstring string) (func(context.Context, *
 	db.Callback().Delete().Before("gorm:delete").Register("instana:delete:before", a.before)
 	db.Callback().RowQuery().Before("gorm:rowquery").Register("instana:rowquery:before", a.before)
 
-	db.Callback().Create().After("gorm:create").Register("instana:create:after", a.before)
-	db.Callback().Query().After("gorm:query").Register("instana:query:after", a.before)
-	db.Callback().Update().After("gorm:update").Register("instana:update:after", a.before)
-	db.Callback().Delete().After("gorm:delete").Register("instana:delete:after", a.before)
-	db.Callback().RowQuery().After("gorm:rowquery").Register("instana:rowquery:after", a.before)
+	db.Callback().Create().After("gorm:create").Register("instana:create:after", a.after)
+	db.Callback().Query().After("gorm:query").Register("instana:query:after", a.after)
+	db.Callback().Update().After("gorm:update").Register("instana:update:after", a.after)
+	db.Callback().Delete().After("gorm:delete").Register("instana:delete:after", a.after)
+	db.Callback().RowQuery().After("gorm:rowquery").Register("instana:rowquery:after", a.after)
 
 	return a.adaptDB, nil
 }
