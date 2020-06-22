@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"context"
+	"github.com/checkr/flagr/pkg/instrumentation/instana"
 	"os"
 	"sync"
 
@@ -15,8 +17,9 @@ import (
 )
 
 var (
-	singletonDB   *gorm.DB
-	singletonOnce sync.Once
+	singletonDB    *gorm.DB
+	singletonOnce  sync.Once
+	instanaAdapter func(context.Context, *gorm.DB) *gorm.DB
 )
 
 // AutoMigrateTables stores the entity tables that we can auto migrate in gorm
@@ -45,7 +48,7 @@ func connectDB() (db *gorm.DB, err error) {
 }
 
 // GetDB gets the db singleton
-func GetDB() *gorm.DB {
+func GetDB(ctx context.Context) *gorm.DB {
 	singletonOnce.Do(func() {
 		db, err := connectDB()
 		if err != nil {
@@ -55,11 +58,15 @@ func GetDB() *gorm.DB {
 				logrus.Fatal("failed to connect to db")
 			}
 		}
+		registerInstanaCallback(db)
 		db.SetLogger(logrus.StandardLogger())
 		db.Debug().AutoMigrate(AutoMigrateTables...)
 		singletonDB = db
 	})
 
+	if config.Config.InstanaEnabled {
+		return instanaAdapter(ctx, singletonDB)
+	}
 	return singletonDB
 }
 
@@ -87,4 +94,11 @@ func PopulateTestDB(flag Flag) *gorm.DB {
 	testDB := NewTestDB()
 	testDB.Create(&flag)
 	return testDB
+}
+
+// registerInstanaCallback registers necessary callbacks for Instana tracing of database operations
+func registerInstanaCallback(db *gorm.DB) {
+	if config.Config.InstanaEnabled {
+		instanaAdapter = instana.NewAdapter(db, config.Config.DBDriver, config.Config.DBConnectionStr)
+	}
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/subtle"
 	"fmt"
+	instana "github.com/instana/go-sensor"
 	"net/http"
 	"strconv"
 	"strings"
@@ -63,6 +64,16 @@ func SetupGlobalMiddleware(handler http.Handler) http.Handler {
 
 	if Config.NewRelicEnabled {
 		n.Use(&negroninewrelic.Newrelic{Application: &Global.NewrelicApp})
+	}
+
+	if Config.InstanaEnabled {
+		n.UseFunc(func(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
+			instana.TracingHandlerFunc(Global.InstanaSensor, "", func(w http.ResponseWriter, req *http.Request) {
+				if next != nil {
+					next(w, req)
+				}
+			})
+		})
 	}
 
 	if Config.CORSEnabled {

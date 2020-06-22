@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	instana "github.com/instana/go-sensor"
 	"os"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -25,6 +26,7 @@ var Global = struct {
 	NewrelicApp  newrelic.Application
 	StatsdClient *statsd.Client
 	Prometheus   prometheusMetrics
+	InstanaSensor *instana.Sensor
 }{}
 
 func init() {
@@ -36,6 +38,7 @@ func init() {
 	setupStatsd()
 	setupNewrelic()
 	setupPrometheus()
+	setupInstana()
 }
 
 func setupEvalOnlyMode() {
@@ -104,6 +107,17 @@ func setupNewrelic() {
 			panic(fmt.Sprintf("unable to initialize newrelic. %s", err))
 		}
 		Global.NewrelicApp = app
+	}
+}
+
+func setupInstana() {
+	if Config.InstanaEnabled {
+		tracer := instana.NewTracerWithOptions(&instana.Options{
+			Service: Config.InstanaAppName,
+			EnableAutoProfile: Config.InstanaProfilingEnabled,
+		})
+
+		Global.InstanaSensor = instana.NewSensorWithTracer(tracer)
 	}
 }
 

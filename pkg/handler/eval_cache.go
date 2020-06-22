@@ -104,6 +104,10 @@ func (ec *EvalCache) reloadMapCache() error {
 		defer config.Global.NewrelicApp.StartTransaction("eval_cache_reload", nil, nil).End()
 	}
 
+	if config.Config.InstanaEnabled {
+
+	}
+
 	_, _, err := withtimeout.Do(ec.refreshTimeout, func() (interface{}, error) {
 		idCache, keyCache, tagCache, err := ec.fetchAllFlags()
 		if err != nil {

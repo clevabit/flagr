@@ -82,6 +82,11 @@ var Config = struct {
 	NewRelicAppName                   string `env:"FLAGR_NEWRELIC_NAME" envDefault:"flagr"`
 	NewRelicKey                       string `env:"FLAGR_NEWRELIC_KEY" envDefault:""`
 
+	// InstanaEnabled - enable Instana monitoring for all the endpoints and DB operations
+	InstanaEnabled          bool   `env:"FLAGR_INSTANA_ENABLED" envDefault:"false"`
+	InstanaAppName          string `env:"FLAGR_NEWRELIC_NAME" envDefault:"flagr"`
+	InstanaProfilingEnabled bool   `env:"FLAGR_INSTANA_PROFILING_ENABLED" envDefault:"true"`
+
 	// StatsdEnabled - enable statsd metrics for all the endpoints and DB operations
 	StatsdEnabled        bool   `env:"FLAGR_STATSD_ENABLED" envDefault:"false"`
 	StatsdHost           string `env:"FLAGR_STATSD_HOST" envDefault:"127.0.0.1"`
