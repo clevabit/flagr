@@ -33,18 +33,19 @@ require (
 	github.com/go-sql-driver/mysql v1.4.0 // indirect
 	github.com/gohttp/pprof v0.0.0-20141119085724-c9d246cbb3ba
 	github.com/gorilla/mux v1.7.1 // indirect
-	github.com/instana/go-sensor v1.13.1 // indirect
+	github.com/instana/go-sensor v1.13.1
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/jinzhu/gorm v0.0.0-20180909231100-123d4f50ef8a
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
 	github.com/jinzhu/now v1.0.0 // indirect
 	github.com/jpillora/backoff v0.0.0-20170918002102-8eab2debe79d // indirect
-	github.com/lib/pq v1.0.0 // indirect
+	github.com/lib/pq v1.0.0
 	github.com/mattn/go-sqlite3 v1.9.0 // indirect
 	github.com/meatballhat/negroni-logrus v0.0.0-20170801195057-31067281800f
 	github.com/newrelic/go-agent v2.1.0+incompatible
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/prashantv/gostub v0.0.0-20170112001514-5c68b99bb088
