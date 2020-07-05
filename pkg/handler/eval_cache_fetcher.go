@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -70,7 +71,7 @@ type evalCacheFetcher interface {
 
 func newFetcher() (evalCacheFetcher, error) {
 	if !config.Config.EvalOnlyMode {
-		return &dbFetcher{db: getDB()}, nil
+		return &dbFetcher{db: getDB(context.Background())}, nil
 	}
 
 	switch config.Config.DBDriver {

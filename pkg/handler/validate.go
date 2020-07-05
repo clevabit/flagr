@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/checkr/flagr/pkg/entity"
 	"github.com/checkr/flagr/pkg/util"
 	"github.com/checkr/flagr/swagger_gen/restapi/operations/distribution"
@@ -20,10 +21,10 @@ var validatePutDistributions = func(params distribution.PutDistributionsParams) 
 	}
 
 	f := &entity.Flag{}
-	if err := getDB().First(f, params.FlagID).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).First(f, params.FlagID).Error; err != nil {
 		return NewError(400, "error finding flagID %v. reason %s", params.FlagID, err)
 	}
-	f.Preload(getDB())
+	f.Preload(getDB(params.HTTPRequest.Context()))
 
 	vMap := make(map[uint]string)
 	vIDs := []uint{}
@@ -48,10 +49,10 @@ var validatePutDistributions = func(params distribution.PutDistributionsParams) 
 
 var validateDeleteVariant = func(params variant.DeleteVariantParams) *Error {
 	f := &entity.Flag{}
-	if err := getDB().First(f, params.FlagID).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).First(f, params.FlagID).Error; err != nil {
 		return NewError(404, "error finding flagID %v. reason %s", params.FlagID, err)
 	}
-	f.Preload(getDB())
+	f.Preload(getDB(params.HTTPRequest.Context()))
 
 	for _, s := range f.Segments {
 		for _, d := range s.Distributions {
@@ -59,7 +60,7 @@ var validateDeleteVariant = func(params variant.DeleteVariantParams) *Error {
 				if d.Percent != uint(0) {
 					return NewError(400, "error deleting variant %v. distribution %v still has non-zero distribution %v", params.VariantID, d.ID, d.Percent)
 				}
-				if err := getDB().Delete(entity.Distribution{}, d.ID).Error; err != nil {
+				if err := getDB(params.HTTPRequest.Context()).Delete(entity.Distribution{}, d.ID).Error; err != nil {
 					return NewError(500, "error deleting distribution %v. reason: %s", d.ID, err)
 				}
 			}
@@ -69,8 +70,8 @@ var validateDeleteVariant = func(params variant.DeleteVariantParams) *Error {
 	return nil
 }
 
-var validatePutVariantForDistributions = func(v *entity.Variant) *Error {
-	err := getDB().
+var validatePutVariantForDistributions = func(v *entity.Variant, ctx context.Context) *Error {
+	err := getDB(ctx).
 		Model(entity.Distribution{}).
 		Where(entity.Distribution{VariantID: v.ID}).
 		Updates(entity.Distribution{VariantKey: v.Key}).

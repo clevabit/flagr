@@ -22,7 +22,7 @@ func (c *crud) CreateFlag(params flag.CreateFlagParams) middleware.Responder {
 		f.Key = key
 	}
 
-	tx := getDB().Begin()
+	tx := getDB(params.HTTPRequest.Context()).Begin()
 
 	if err := tx.Create(f).Error; err != nil {
 		tx.Rollback()
@@ -55,7 +55,7 @@ func (c *crud) CreateFlag(params flag.CreateFlagParams) middleware.Responder {
 	}
 	resp.SetPayload(payload)
 
-	entity.SaveFlagSnapshot(getDB(), f.ID, getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), f.ID, getSubjectFromRequest(params.HTTPRequest))
 
 	return resp
 }

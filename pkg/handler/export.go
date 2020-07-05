@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -70,7 +71,7 @@ var exportFlags = func(tmpDB *gorm.DB) error {
 
 var exportFlagSnapshots = func(tmpDB *gorm.DB) error {
 	var snapshots []entity.FlagSnapshot
-	if err := getDB().Find(&snapshots).Error; err != nil {
+	if err := getDB(context.Background()).Find(&snapshots).Error; err != nil {
 		return err
 	}
 	for _, s := range snapshots {
@@ -84,7 +85,7 @@ var exportFlagSnapshots = func(tmpDB *gorm.DB) error {
 
 var exportFlagEntityTypes = func(tmpDB *gorm.DB) error {
 	var ts []entity.FlagEntityType
-	if err := getDB().Find(&ts).Error; err != nil {
+	if err := getDB(context.Background()).Find(&ts).Error; err != nil {
 		return err
 	}
 	for _, s := range ts {

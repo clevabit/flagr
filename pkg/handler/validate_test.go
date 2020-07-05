@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -261,7 +262,7 @@ func TestValidatePutVariantForDistributions(t *testing.T) {
 			FlagID: 1,
 			Key:    "control",
 		}
-		err := validatePutVariantForDistributions(v)
+		err := validatePutVariantForDistributions(v, context.Background())
 		assert.Nil(t, err)
 	})
 
@@ -274,7 +275,7 @@ func TestValidatePutVariantForDistributions(t *testing.T) {
 			FlagID: 1,
 			Key:    "control",
 		}
-		err := validatePutVariantForDistributions(v)
+		err := validatePutVariantForDistributions(v, context.Background())
 		assert.NotZero(t, err)
 		db.Error = nil
 	})

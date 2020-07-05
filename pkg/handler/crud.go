@@ -77,7 +77,7 @@ var (
 )
 
 func (c *crud) FindFlags(params flag.FindFlagsParams) middleware.Responder {
-	tx := getDB()
+	tx := getDB(params.HTTPRequest.Context())
 	fs := []entity.Flag{}
 	q := entity.Flag{}
 
@@ -113,7 +113,9 @@ func (c *crud) FindFlags(params flag.FindFlagsParams) middleware.Responder {
 	tx = tx.Order("id").Where(q)
 	if params.Tags != nil {
 		t := []entity.Tag{}
-		getDB().Where("value in (?)", strings.Split(*params.Tags, ",")).Find(&t)
+		getDB(params.HTTPRequest.Context()).
+			Where("value in (?)", strings.Split(*params.Tags, ",")).
+			Find(&t)
 		err = tx.Model(&t).Group("flags.id").Related(&fs, "Flags").Error
 	} else {
 		err = tx.Find(&fs).Error
@@ -136,7 +138,9 @@ func (c *crud) FindFlags(params flag.FindFlagsParams) middleware.Responder {
 
 func (c *crud) GetFlag(params flag.GetFlagParams) middleware.Responder {
 	f := &entity.Flag{}
-	result := entity.PreloadSegmentsVariantsTags(getDB()).First(f, params.FlagID)
+	result := entity.
+		PreloadSegmentsVariantsTags(getDB(params.HTTPRequest.Context())).
+		First(f, params.FlagID)
 
 	// Flag with given ID doesn't exist, so we 404
 	if result.RecordNotFound() {
@@ -162,7 +166,7 @@ func (c *crud) GetFlag(params flag.GetFlagParams) middleware.Responder {
 
 func (c *crud) GetFlagSnapshots(params flag.GetFlagSnapshotsParams) middleware.Responder {
 	fs := []entity.FlagSnapshot{}
-	err := getDB().
+	err := getDB(params.HTTPRequest.Context()).
 		Order("created_at desc").
 		Where(entity.FlagSnapshot{FlagID: util.SafeUint(params.FlagID)}).
 		Find(&fs).Error
@@ -182,7 +186,11 @@ func (c *crud) GetFlagSnapshots(params flag.GetFlagSnapshotsParams) middleware.R
 
 func (c *crud) GetFlagEntityTypes(params flag.GetFlagEntityTypesParams) middleware.Responder {
 	entityTypes := []entity.FlagEntityType{}
-	if err := getDB().Order("key").Find(&entityTypes).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		Order("key").
+		Find(&entityTypes).Error
+
+	if err != nil {
 		return flag.NewGetFlagEntityTypesDefault(500).WithPayload(
 			ErrorMessage("cannot find flag entity types. err:%s", err))
 
@@ -199,7 +207,7 @@ func (c *crud) GetFlagEntityTypes(params flag.GetFlagEntityTypesParams) middlewa
 
 func (c *crud) PutFlag(params flag.PutFlagParams) middleware.Responder {
 	f := &entity.Flag{}
-	tx := getDB()
+	tx := getDB(params.HTTPRequest.Context())
 
 	if err := tx.First(f, params.FlagID).Error; err != nil {
 		return flag.NewPutFlagDefault(404).WithPayload(ErrorMessage("%s", err))
@@ -245,19 +253,25 @@ func (c *crud) PutFlag(params flag.PutFlagParams) middleware.Responder {
 	}
 	resp.SetPayload(payload)
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) SetFlagEnabledState(params flag.SetFlagEnabledParams) middleware.Responder {
 	f := &entity.Flag{}
-	if err := getDB().First(f, params.FlagID).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		First(f, params.FlagID).Error
+
+	if err != nil {
 		return flag.NewSetFlagEnabledDefault(404).WithPayload(ErrorMessage("%s", err))
 	}
 
 	f.Enabled = *params.Body.Enabled
 
-	if err := getDB().Save(f).Error; err != nil {
+	err = getDB(params.HTTPRequest.Context()).
+		Save(f).Error
+
+	if err != nil {
 		return flag.NewSetFlagEnabledDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
@@ -268,12 +282,15 @@ func (c *crud) SetFlagEnabledState(params flag.SetFlagEnabledParams) middleware.
 	}
 	resp.SetPayload(payload)
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) DeleteFlag(params flag.DeleteFlagParams) middleware.Responder {
-	if err := getDB().Delete(&entity.Flag{}, params.FlagID).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		Delete(&entity.Flag{}, params.FlagID).Error
+
+	if err != nil {
 		return flag.NewDeleteFlagDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 	return flag.NewDeleteFlagOK()
@@ -286,16 +303,25 @@ func (c *crud) DeleteTag(params tag.DeleteTagParams) middleware.Responder {
 	s := &entity.Flag{}
 	s.ID = uint(params.FlagID)
 
-	if err := getDB().Find(s).Association("Tags").Delete(t).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		Find(s).
+		Association("Tags").
+		Delete(t).Error
+
+	if err != nil {
 		return tag.NewDeleteTagDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return tag.NewDeleteTagOK()
 }
 
 func (c *crud) FindTags(params tag.FindTagsParams) middleware.Responder {
 	ds := []entity.Tag{}
-	if err := getDB().First(&entity.Flag{}, params.FlagID).Related(&ds, "Tags").Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		First(&entity.Flag{}, params.FlagID).
+		Related(&ds, "Tags").Error
+
+	if err != nil {
 		return tag.NewFindTagsDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
@@ -305,7 +331,7 @@ func (c *crud) FindTags(params tag.FindTagsParams) middleware.Responder {
 }
 
 func (c *crud) FindAllTags(params tag.FindAllTagsParams) middleware.Responder {
-	tx := getDB()
+	tx := getDB(params.HTTPRequest.Context())
 	ds := []entity.Tag{}
 
 	if params.Limit != nil {
@@ -339,15 +365,23 @@ func (c *crud) CreateTag(params tag.CreateTagParams) middleware.Responder {
 		return tag.NewCreateTagDefault(400).WithPayload(ErrorMessage("%s", reason))
 	}
 
-	getDB().Where("value = ?", util.SafeString(params.Body.Value)).Find(t) // Find the existing tag to associate if it exists
-	if err := getDB().Model(s).Association("Tags").Append(t).Error; err != nil {
+	getDB(params.HTTPRequest.Context()).
+		Where("value = ?", util.SafeString(params.Body.Value)).
+		Find(t) // Find the existing tag to associate if it exists
+
+	err := getDB(params.HTTPRequest.Context()).
+		Model(s).
+		Association("Tags").
+		Append(t).Error
+
+	if err != nil {
 		return tag.NewCreateTagDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := tag.NewCreateTagOK()
 	resp.SetPayload(e2r.MapTag(t))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
@@ -358,7 +392,7 @@ func (c *crud) CreateSegment(params segment.CreateSegmentParams) middleware.Resp
 	s.Description = util.SafeString(params.Body.Description)
 	s.Rank = entity.SegmentDefaultRank
 
-	err := getDB().Create(s).Error
+	err := getDB(params.HTTPRequest.Context()).Create(s).Error
 	if err != nil {
 		return segment.NewCreateSegmentDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
@@ -366,14 +400,14 @@ func (c *crud) CreateSegment(params segment.CreateSegmentParams) middleware.Resp
 	resp := segment.NewCreateSegmentOK()
 	resp.SetPayload(e2r.MapSegment(s))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) FindSegments(params segment.FindSegmentsParams) middleware.Responder {
 	ss := []entity.Segment{}
 	err := entity.
-		PreloadConstraintsDistribution(getDB()).
+		PreloadConstraintsDistribution(getDB(params.HTTPRequest.Context())).
 		Order("rank").
 		Order("id").
 		Where(entity.Segment{FlagID: uint(params.FlagID)}).
@@ -392,7 +426,7 @@ func (c *crud) FindSegments(params segment.FindSegmentsParams) middleware.Respon
 func (c *crud) PutSegment(params segment.PutSegmentParams) middleware.Responder {
 	s := &entity.Segment{}
 	err := entity.
-		PreloadConstraintsDistribution(getDB()).
+		PreloadConstraintsDistribution(getDB(params.HTTPRequest.Context())).
 		First(s, params.SegmentID).
 		Error
 	if err != nil {
@@ -402,19 +436,19 @@ func (c *crud) PutSegment(params segment.PutSegmentParams) middleware.Responder 
 	s.RolloutPercent = util.SafeUint(params.Body.RolloutPercent)
 	s.Description = util.SafeString(params.Body.Description)
 
-	if err := getDB().Save(s).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).Save(s).Error; err != nil {
 		return segment.NewPutSegmentDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := segment.NewPutSegmentOK()
 	resp.SetPayload(e2r.MapSegment(s))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) PutSegmentsReorder(params segment.PutSegmentsReorderParams) middleware.Responder {
-	tx := getDB().Begin()
+	tx := getDB(params.HTTPRequest.Context()).Begin()
 	for i, segmentID := range params.Body.SegmentIDs {
 		s := &entity.Segment{}
 		if err := tx.First(s, segmentID).Error; err != nil {
@@ -433,17 +467,20 @@ func (c *crud) PutSegmentsReorder(params segment.PutSegmentsReorderParams) middl
 		return segment.NewPutSegmentsReorderDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 
 	return segment.NewPutSegmentsReorderOK()
 }
 
 func (c *crud) DeleteSegment(params segment.DeleteSegmentParams) middleware.Responder {
-	if err := getDB().Delete(&entity.Segment{}, util.SafeUint(params.SegmentID)).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		Delete(&entity.Segment{}, util.SafeUint(params.SegmentID)).Error
+
+	if err != nil {
 		return segment.NewDeleteSegmentDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return segment.NewDeleteSegmentOK()
 }
 
@@ -458,20 +495,25 @@ func (c *crud) CreateConstraint(params constraint.CreateConstraintParams) middle
 	if err := cons.Validate(); err != nil {
 		return constraint.NewCreateConstraintDefault(400).WithPayload(ErrorMessage("%s", err))
 	}
-	if err := getDB().Create(cons).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).Create(cons).Error; err != nil {
 		return constraint.NewCreateConstraintDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := constraint.NewCreateConstraintOK()
 	resp.SetPayload(e2r.MapConstraint(cons))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) FindConstraints(params constraint.FindConstraintsParams) middleware.Responder {
 	cs := []entity.Constraint{}
-	if err := getDB().Order("created_at").Where(entity.Constraint{SegmentID: uint(params.SegmentID)}).Find(&cs).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		Order("created_at").
+		Where(entity.Constraint{SegmentID: uint(params.SegmentID)}).
+		Find(&cs).Error
+
+	if err != nil {
 		return constraint.NewFindConstraintsDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
@@ -483,7 +525,7 @@ func (c *crud) FindConstraints(params constraint.FindConstraintsParams) middlewa
 func (c *crud) PutConstraint(params constraint.PutConstraintParams) middleware.Responder {
 	cons := &entity.Constraint{}
 
-	if err := getDB().First(cons, params.ConstraintID).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).First(cons, params.ConstraintID).Error; err != nil {
 		return constraint.NewPutConstraintDefault(404).WithPayload(ErrorMessage("%s", err))
 	}
 
@@ -496,25 +538,28 @@ func (c *crud) PutConstraint(params constraint.PutConstraintParams) middleware.R
 		return constraint.NewPutConstraintDefault(400).WithPayload(ErrorMessage("%s", err))
 	}
 
-	if err := getDB().Save(&cons).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).Save(&cons).Error; err != nil {
 		return constraint.NewPutConstraintDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := constraint.NewPutConstraintOK()
 	resp.SetPayload(e2r.MapConstraint(cons))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) DeleteConstraint(params constraint.DeleteConstraintParams) middleware.Responder {
-	if err := getDB().Delete(entity.Constraint{}, params.ConstraintID).Error; err != nil {
+	err := getDB(params.HTTPRequest.Context()).
+		Delete(entity.Constraint{}, params.ConstraintID).Error
+
+	if err != nil {
 		return constraint.NewDeleteConstraintDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := constraint.NewDeleteConstraintOK()
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
@@ -526,7 +571,7 @@ func (c *crud) PutDistributions(params distribution.PutDistributionsParams) midd
 
 	segmentID := uint(params.SegmentID)
 
-	tx := getDB().Begin()
+	tx := getDB(params.HTTPRequest.Context()).Begin()
 	err := tx.Delete(entity.Distribution{}, "segment_id = ?", segmentID).Error
 	if err != nil {
 		tx.Rollback()
@@ -550,13 +595,13 @@ func (c *crud) PutDistributions(params distribution.PutDistributionsParams) midd
 	resp := distribution.NewPutDistributionsOK()
 	resp.SetPayload(e2r.MapDistributions(ds))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) FindDistributions(params distribution.FindDistributionsParams) middleware.Responder {
 	ds := []entity.Distribution{}
-	err := getDB().
+	err := getDB(params.HTTPRequest.Context()).
 		Order("variant_id").
 		Where(entity.Distribution{SegmentID: uint(params.SegmentID)}).
 		Find(&ds).
@@ -585,20 +630,20 @@ func (c *crud) CreateVariant(params variant.CreateVariantParams) middleware.Resp
 		return variant.NewCreateVariantDefault(400).WithPayload(ErrorMessage("%s", err))
 	}
 
-	if err := getDB().Create(v).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).Create(v).Error; err != nil {
 		return variant.NewCreateVariantDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := variant.NewCreateVariantOK()
 	resp.SetPayload(e2r.MapVariant(v))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
 func (c *crud) FindVariants(params variant.FindVariantsParams) middleware.Responder {
 	vs := []entity.Variant{}
-	err := getDB().
+	err := getDB(params.HTTPRequest.Context()).
 		Order("id").
 		Where(entity.Variant{FlagID: uint(params.FlagID)}).
 		Find(&vs).
@@ -615,7 +660,7 @@ func (c *crud) FindVariants(params variant.FindVariantsParams) middleware.Respon
 func (c *crud) PutVariant(params variant.PutVariantParams) middleware.Responder {
 	v := &entity.Variant{}
 
-	if err := getDB().First(v, params.VariantID).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).First(v, params.VariantID).Error; err != nil {
 		return variant.NewPutVariantDefault(404).WithPayload(ErrorMessage("%s", err))
 	}
 
@@ -632,18 +677,18 @@ func (c *crud) PutVariant(params variant.PutVariantParams) middleware.Responder 
 		return variant.NewPutVariantDefault(400).WithPayload(ErrorMessage("%s", err))
 	}
 
-	if err := getDB().Save(&v).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).Save(&v).Error; err != nil {
 		return variant.NewPutVariantDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
-	if err := validatePutVariantForDistributions(v); err != nil {
+	if err := validatePutVariantForDistributions(v, params.HTTPRequest.Context()); err != nil {
 		return variant.NewPutVariantDefault(err.StatusCode).WithPayload(ErrorMessage("%s", err))
 	}
 
 	resp := variant.NewPutVariantOK()
 	resp.SetPayload(e2r.MapVariant(v))
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return resp
 }
 
@@ -652,10 +697,10 @@ func (c *crud) DeleteVariant(params variant.DeleteVariantParams) middleware.Resp
 		return variant.NewDeleteVariantDefault(err.StatusCode).WithPayload(ErrorMessage("%s", err))
 	}
 
-	if err := getDB().Delete(entity.Variant{}, params.VariantID).Error; err != nil {
+	if err := getDB(params.HTTPRequest.Context()).Delete(entity.Variant{}, params.VariantID).Error; err != nil {
 		return variant.NewDeleteVariantDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 
-	entity.SaveFlagSnapshot(getDB(), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
 	return variant.NewDeleteVariantOK()
 }
