@@ -58,7 +58,13 @@ func GetDB(ctx context.Context) *gorm.DB {
 				logrus.Fatal("failed to connect to db")
 			}
 		}
-		registerInstanaCallback(db)
+		if err := registerInstanaCallback(db); err != nil {
+			if config.Config.DBConnectionDebug {
+				logrus.WithField("err", err).Fatal("failed to inject Instana to db")
+			} else {
+				logrus.Fatal("failed to inject Instana to db")
+			}
+		}
 		db.SetLogger(logrus.StandardLogger())
 		db.Debug().AutoMigrate(AutoMigrateTables...)
 		singletonDB = db
@@ -97,8 +103,13 @@ func PopulateTestDB(flag Flag) *gorm.DB {
 }
 
 // registerInstanaCallback registers necessary callbacks for Instana tracing of database operations
-func registerInstanaCallback(db *gorm.DB) {
+func registerInstanaCallback(db *gorm.DB) error {
 	if config.Config.InstanaEnabled {
-		instanaAdapter = instana.NewAdapter(db, config.Config.DBDriver, config.Config.DBConnectionStr)
+		ia, err := instana.NewAdapter(db, config.Config.DBDriver, config.Config.DBConnectionStr)
+		if err != nil {
+			return err
+		}
+		instanaAdapter = ia
 	}
+	return nil
 }
