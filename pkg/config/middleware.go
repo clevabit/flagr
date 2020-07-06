@@ -72,7 +72,7 @@ func SetupGlobalMiddleware(handler http.Handler) http.Handler {
 				if next != nil {
 					next(w, req)
 				}
-			})
+			})(w, req)
 		})
 	}
 
