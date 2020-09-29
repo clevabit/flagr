@@ -154,6 +154,11 @@ func TestCrudFlags(t *testing.T) {
 		res = c.DeleteFlag(flag.DeleteFlagParams{FlagID: int64(1)})
 		assert.NotZero(t, res.(*flag.DeleteFlagOK))
 	})
+
+	t.Run("it should be able to restore the flag", func(t *testing.T) {
+		res = c.RestoreFlag(flag.RestoreFlagParams{FlagID: int64(1)})
+		assert.NotZero(t, res.(*flag.RestoreFlagOK))
+	})
 }
 
 func TestCrudFlagsWithFailures(t *testing.T) {
@@ -427,6 +432,18 @@ func TestFindFlags(t *testing.T) {
 		assert.Len(t, res.(*flag.FindFlagsOK).Payload, 1)
 		assert.Equal(t, res.(*flag.FindFlagsOK).Payload[0].ID, int64(1))
 	})
+	t.Run("FindFlags (deleted Flag)", func(t *testing.T) {
+		res = c.DeleteFlag(flag.DeleteFlagParams{FlagID: int64(1)})
+		res = c.FindFlags(flag.FindFlagsParams{
+			Deleted: util.BoolPtr(true),
+		})
+		assert.Len(t, res.(*flag.FindFlagsOK).Payload, 1)
+	})
+	t.Run("FindFlags (deleted flags not in FindFlags)", func(t *testing.T) {
+		res = c.DeleteFlag(flag.DeleteFlagParams{FlagID: int64(1)})
+		res = c.FindFlags(flag.FindFlagsParams{})
+		assert.Len(t, res.(*flag.FindFlagsOK).Payload, numOfFlags-1)
+	})
 }
 
 func TestCrudSegments(t *testing.T) {
@@ -626,7 +643,23 @@ func TestCrudConstraints(t *testing.T) {
 	})
 	assert.NotZero(t, res.(*constraint.PutConstraintOK).Payload.ID)
 
-	// step 5. it should be able to delete a constraint
+	// step 5. it should be able to update the constraint
+	variousPropertyNames := []string{"test", "test-dash", "test_underscore", "@test", "@@test"}
+	for _, propertyName := range variousPropertyNames {
+		res = c.PutConstraint(constraint.PutConstraintParams{
+			FlagID:       int64(1),
+			SegmentID:    int64(1),
+			ConstraintID: int64(1),
+			Body: &models.CreateConstraintRequest{
+				Operator: util.StringPtr("EQ"),
+				Property: util.StringPtr(propertyName),
+				Value:    util.StringPtr(`"CA"`),
+			},
+		})
+		assert.NotZero(t, res.(*constraint.PutConstraintOK).Payload.ID)
+	}
+
+	// step 6. it should be able to delete a constraint
 	res = c.DeleteConstraint(constraint.DeleteConstraintParams{
 		FlagID:       int64(1),
 		SegmentID:    int64(1),

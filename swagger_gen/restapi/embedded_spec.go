@@ -31,7 +31,7 @@ func init() {
   "info": {
     "description": "Flagr is a feature flagging, A/B testing and dynamic configuration microservice. The base path for all the APIs is \"/api/v1\".\n",
     "title": "Flagr",
-    "version": "1.1.9"
+    "version": "1.1.12"
   },
   "basePath": "/api/v1",
   "paths": {
@@ -216,6 +216,12 @@ func init() {
             "type": "boolean",
             "description": "return flags with preloaded segments and variants",
             "name": "preload",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "return all deleted flags",
+            "name": "deleted",
             "in": "query"
           }
         ],
@@ -420,6 +426,39 @@ func init() {
             "schema": {
               "$ref": "#/definitions/setFlagEnabledRequest"
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "returns the flag",
+            "schema": {
+              "$ref": "#/definitions/flag"
+            }
+          },
+          "default": {
+            "description": "generic error response",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/flags/{flagID}/restore": {
+      "put": {
+        "tags": [
+          "flag"
+        ],
+        "operationId": "restoreFlag",
+        "parameters": [
+          {
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "description": "numeric ID of the flag to get",
+            "name": "flagID",
+            "in": "path",
+            "required": true
           }
         ],
         "responses": {
@@ -2038,7 +2077,7 @@ func init() {
   "info": {
     "description": "Flagr is a feature flagging, A/B testing and dynamic configuration microservice. The base path for all the APIs is \"/api/v1\".\n",
     "title": "Flagr",
-    "version": "1.1.9"
+    "version": "1.1.12"
   },
   "basePath": "/api/v1",
   "paths": {
@@ -2223,6 +2262,12 @@ func init() {
             "type": "boolean",
             "description": "return flags with preloaded segments and variants",
             "name": "preload",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "return all deleted flags",
+            "name": "deleted",
             "in": "query"
           }
         ],
@@ -2427,6 +2472,39 @@ func init() {
             "schema": {
               "$ref": "#/definitions/setFlagEnabledRequest"
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "returns the flag",
+            "schema": {
+              "$ref": "#/definitions/flag"
+            }
+          },
+          "default": {
+            "description": "generic error response",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/flags/{flagID}/restore": {
+      "put": {
+        "tags": [
+          "flag"
+        ],
+        "operationId": "restoreFlag",
+        "parameters": [
+          {
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "description": "numeric ID of the flag to get",
+            "name": "flagID",
+            "in": "path",
+            "required": true
           }
         ],
         "responses": {

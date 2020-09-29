@@ -41,7 +41,13 @@ func SetupGlobalMiddleware(handler http.Handler) http.Handler {
 	}
 
 	if Config.MiddlewareVerboseLoggerEnabled {
-		n.Use(negronilogrus.NewMiddlewareFromLogger(logrus.StandardLogger(), "flagr"))
+		middleware := negronilogrus.NewMiddlewareFromLogger(logrus.StandardLogger(), "flagr")
+
+		for _, u := range Config.MiddlewareVerboseLoggerExcludeURLs {
+			middleware.ExcludeURL(u)
+		}
+
+		n.Use(middleware)
 	}
 
 	if Config.StatsdEnabled {
@@ -78,11 +84,11 @@ func SetupGlobalMiddleware(handler http.Handler) http.Handler {
 
 	if Config.CORSEnabled {
 		n.Use(cors.New(cors.Options{
-			AllowedOrigins:   []string{"*"},
-			AllowedHeaders:   []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "Authorization", "Time_Zone"},
-			ExposedHeaders:   []string{"Www-Authenticate"},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
-			AllowCredentials: true,
+			AllowedOrigins:   Config.CORSAllowedOrigins,
+			AllowedHeaders:   Config.CORSAllowedHeaders,
+			ExposedHeaders:   Config.CORSExposedHeaders,
+			AllowedMethods:   Config.CORSAllowedMethods,
+			AllowCredentials: Config.CORSAllowCredentials,
 		}))
 	}
 
