@@ -26,6 +26,7 @@ type CRUD interface {
 	GetFlag(flag.GetFlagParams) middleware.Responder
 	PutFlag(flag.PutFlagParams) middleware.Responder
 	DeleteFlag(flag.DeleteFlagParams) middleware.Responder
+	RestoreFlag(flag.RestoreFlagParams) middleware.Responder
 	SetFlagEnabledState(flag.SetFlagEnabledParams) middleware.Responder
 	GetFlagSnapshots(params flag.GetFlagSnapshotsParams) middleware.Responder
 	GetFlagEntityTypes(params flag.GetFlagEntityTypesParams) middleware.Responder
@@ -77,7 +78,8 @@ var (
 )
 
 func (c *crud) FindFlags(params flag.FindFlagsParams) middleware.Responder {
-	tx := getDB(params.HTTPRequest.Context())
+	// Add Unscoped so GORM doesn't automatically override `deleted_at`
+	tx := getDB(params.HTTPRequest.Context()).Unscoped()
 	fs := []entity.Flag{}
 	q := entity.Flag{}
 
@@ -107,6 +109,11 @@ func (c *crud) FindFlags(params flag.FindFlagsParams) middleware.Responder {
 			"lower(description) like ?",
 			fmt.Sprintf("%%%s%%", strings.ToLower(*params.DescriptionLike)),
 		)
+	}
+	if params.Deleted != nil && *params.Deleted {
+		tx = tx.Where("deleted_at is not null")
+	} else {
+		tx = tx.Where("deleted_at is null")
 	}
 
 	var err error
@@ -279,6 +286,29 @@ func (c *crud) SetFlagEnabledState(params flag.SetFlagEnabledParams) middleware.
 	payload, err := e2rMapFlag(f)
 	if err != nil {
 		return flag.NewSetFlagEnabledDefault(500).WithPayload(ErrorMessage("%s", err))
+	}
+	resp.SetPayload(payload)
+
+	entity.SaveFlagSnapshot(getDB(params.HTTPRequest.Context()), util.SafeUint(params.FlagID), getSubjectFromRequest(params.HTTPRequest))
+	return resp
+}
+
+func (c *crud) RestoreFlag(params flag.RestoreFlagParams) middleware.Responder {
+	f := &entity.Flag{}
+	if err := entity.PreloadFlagTags(getDB(params.HTTPRequest.Context()).Unscoped()).First(f, params.FlagID).Error; err != nil {
+		return flag.NewRestoreFlagDefault(404).WithPayload(ErrorMessage("%s", err))
+	}
+
+	f.DeletedAt = nil
+
+	if err := getDB(params.HTTPRequest.Context()).Unscoped().Save(f).Error; err != nil {
+		return flag.NewRestoreFlagDefault(500).WithPayload(ErrorMessage("%s", err))
+	}
+
+	resp := flag.NewRestoreFlagOK()
+	payload, err := e2rMapFlag(f)
+	if err != nil {
+		return flag.NewRestoreFlagDefault(500).WithPayload(ErrorMessage("%s", err))
 	}
 	resp.SetPayload(payload)
 
