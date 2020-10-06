@@ -50,7 +50,7 @@ spec:
         tty: true
       dnsPolicy: ClusterFirst
       imagePullSecrets:
-      - name: habor-clevabit
+      - name: harbor-clevabit
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
